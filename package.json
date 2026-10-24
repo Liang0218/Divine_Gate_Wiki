@@ -1,0 +1,11 @@
+{
+  "name": "divine-gate-wiki",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-dgdb-pages.mjs",
+    "preview": "npm run build && npx wrangler pages dev dgdb-pages",
+    "deploy": "npm run build && npx wrangler pages deploy dgdb-pages --project-name=dgdb-archive"
+  }
+}
