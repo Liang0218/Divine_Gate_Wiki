@@ -91,16 +91,27 @@ function renderBattleTool() {
       const [slot, unitId] = key.split(":").map(Number);
       return Number.isInteger(slot) && slot >= 0 && slot < 5 && availableById.has(unitId) && validVisualOverrides(overrides, nativeFields);
     }));
+  const validCutinProfiles = (profiles) => profiles == null || (typeof profiles === "object" && !Array.isArray(profiles)
+    && Object.entries(profiles).every(([id, overrides]) => availableById.has(Number(id))
+      && validVisualOverrides(overrides, ["img_cutin_tiling", "img_cutin_offsetX", "img_cutin_offsetY"])));
+  const validEnemyProfiles = (profiles) => profiles == null || (typeof profiles === "object" && !Array.isArray(profiles)
+    && Object.entries(profiles).every(([id, profile]) => enemyById.has(Number(id)) && profile
+      && validVisualOverrides(profile.fieldOverrides, ["size_width", "size_height", "pivot", "side_offset"])
+      && validEnemyOverrides(profile.overrides)));
   const defaultEnemy = enemyChoices[0];
   const validDraft = (value) => value?.format === "dg-wiki-native-battle-draft" && value.dataVersion === scene.catalog.dataVersion
     && value.sourceApkSha256 === scene.catalog.sourceApkSha256 && Array.isArray(value.party) && value.party.length === 5
     && value.party.every((slot) => availableById.has(Number(slot.unitId)) && validVisualOverrides(slot.overrides, nativeFields))
     && validPartyProfiles(value.partyProfiles)
+    && validCutinProfiles(value.cutinProfiles)
+    && validEnemyProfiles(value.enemyProfiles)
     && availableById.has(Number(value.cutin?.unitId)) && validVisualOverrides(value.cutin?.overrides, ["img_cutin_tiling", "img_cutin_offsetX", "img_cutin_offsetY"])
     && enemyById.has(Number(value.enemy?.unitId)) && validVisualOverrides(value.enemy?.fieldOverrides, ["size_width", "size_height", "pivot", "side_offset"])
     && validEnemyOverrides(value.enemy?.overrides);
   let party = nativeDefaultSlots();
   let partyProfiles = {};
+  let cutinProfiles = {};
+  let enemyProfiles = {};
   let cutin = { unitId: Number(party[0]?.unitId), overrides: {} };
   let enemy = { unitId: Number(defaultEnemy?.id), overrides: emptyEnemyOverrides(), fieldOverrides: {} };
   try {
@@ -108,10 +119,14 @@ function renderBattleTool() {
     if (validDraft(saved)) {
       party = saved.party; cutin = saved.cutin; enemy = saved.enemy;
       partyProfiles = { ...(saved.partyProfiles || {}) };
+      cutinProfiles = { ...(saved.cutinProfiles || {}) };
+      enemyProfiles = { ...(saved.enemyProfiles || {}) };
       party.forEach((slot, index) => {
         const key = partyProfileKey(index, slot.unitId);
         if (!Object.hasOwn(partyProfiles, key)) partyProfiles[key] = { ...slot.overrides };
       });
+      if (!Object.hasOwn(cutinProfiles, cutin.unitId)) cutinProfiles[cutin.unitId] = { ...cutin.overrides };
+      if (!Object.hasOwn(enemyProfiles, enemy.unitId)) enemyProfiles[enemy.unitId] = { overrides: { ...enemy.overrides }, fieldOverrides: { ...enemy.fieldOverrides } };
     }
   } catch { /* Start from native defaults when no local draft is available. */ }
   let savedView = {};
@@ -166,9 +181,11 @@ function renderBattleTool() {
   };
   const storeDraft = () => {
     party.forEach((slot, index) => { partyProfiles[partyProfileKey(index, slot.unitId)] = { ...slot.overrides }; });
+    cutinProfiles[cutin.unitId] = { ...cutin.overrides };
+    enemyProfiles[enemy.unitId] = { overrides: { ...enemy.overrides }, fieldOverrides: { ...enemy.fieldOverrides } };
     clearTimeout(saveTimer); status.textContent = "儲存中…";
     saveTimer = setTimeout(() => {
-      try { localStorage.setItem(battleStorageKey, JSON.stringify({ format: "dg-wiki-native-battle-draft", dataVersion: scene.catalog.dataVersion, sourceApkSha256: scene.catalog.sourceApkSha256, party, partyProfiles, cutin, enemy })); if (status.isConnected) status.textContent = "已儲存在此瀏覽器"; }
+      try { localStorage.setItem(battleStorageKey, JSON.stringify({ format: "dg-wiki-native-battle-draft", dataVersion: scene.catalog.dataVersion, sourceApkSha256: scene.catalog.sourceApkSha256, party, partyProfiles, cutinProfiles, enemyProfiles, cutin, enemy })); if (status.isConnected) status.textContent = "已儲存在此瀏覽器"; }
       catch { if (status.isConnected) status.textContent = "無法儲存，請匯出 JSON"; }
     }, 120);
   };
@@ -242,8 +259,16 @@ function renderBattleTool() {
       partyProfiles[partyProfileKey(activeSlot, previous.unitId)] = { ...previous.overrides };
       party[activeSlot] = { unitId: id, overrides: { ...(partyProfiles[partyProfileKey(activeSlot, id)] || {}) } };
     }
-    else if (editMode === "cutin") cutin = { unitId: id, overrides: {} };
-    else enemy = { unitId: id, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
+    else if (editMode === "cutin") {
+      cutinProfiles[cutin.unitId] = { ...cutin.overrides };
+      cutin = { unitId: id, overrides: { ...(cutinProfiles[id] || {}) } };
+    } else {
+      enemyProfiles[enemy.unitId] = { overrides: { ...enemy.overrides }, fieldOverrides: { ...enemy.fieldOverrides } };
+      const saved = enemyProfiles[id];
+      enemy = saved
+        ? { unitId: id, overrides: { ...saved.overrides }, fieldOverrides: { ...saved.fieldOverrides } }
+        : { unitId: id, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
+    }
     refresh();
   });
   document.querySelector("#battle-size").addEventListener("input", (event) => {
