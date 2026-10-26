@@ -6,6 +6,8 @@ let db;
 const dataCache = new Map();
 const unitPageSize = 60;
 let routeGeneration = 0;
+const battleStorageKey = "dg-wiki-native-battle-v3";
+const battleFormat = "dg-battle-presentation";
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
 const id3 = (value) => String(value ?? "").padStart(3, "0");
@@ -57,7 +59,7 @@ function shell(title, lede, content) {
 
 function renderHome() {
   document.title = "Divine Gate 資料庫";
-  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.0.0</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
+  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.1.0</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a><a class="link-card" href="/battle"><strong>戰鬥配置工具 →</strong><span>在原生五格角色框內調整立繪取景，匯出 APK 調整檔</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
   document.querySelector("#home-search").addEventListener("submit", (event) => {
     event.preventDefault();
     const query = document.querySelector("#home-query").value.trim();
@@ -65,6 +67,260 @@ function renderHome() {
   });
 }
 
+function renderBattleTool() {
+  const units = db.units || [];
+  const scene = db.scene;
+  const nativeUnits = scene.catalog.units;
+  const wikiByDrawId = new Map(units.map((unit) => [Number(unit.draw_id), unit]));
+  const available = nativeUnits.filter((unit) => wikiByDrawId.has(Number(unit.drawId)));
+  const availableById = new Map(available.map((unit) => [Number(unit.id), unit]));
+  const enemyChoices = available.filter((unit) => unit.enemies?.length);
+  const enemyById = new Map(enemyChoices.map((unit) => [Number(unit.id), unit]));
+  const slotLabels = ["隊長 · 右側大格", "隊員 1 · 右上", "隊員 2 · 右下", "隊員 3 · 左上", "好友 · 左下"];
+  const nativeFields = ["img_0_tiling", "img_0_offsetX", "img_0_offsetY", "img_1_tiling", "img_1_offsetX", "img_1_offsetY", "img_2_tiling", "img_2_offsetX", "img_2_offsetY", "img_3_tiling", "img_3_offsetX", "img_3_offsetY", "img_4_tiling", "img_4_offsetX", "img_4_offsetY", "img_cutin_tiling", "img_cutin_offsetX", "img_cutin_offsetY", "size_width", "size_height", "pivot", "side_offset"];
+  const enemyFieldNames = ["pos_absolute", "posx_offset", "posy_offset", "posz_value", "hp_gauge_type", "hp_posx_offset", "hp_posy_offset"];
+  const emptyEnemyOverrides = () => ({ pos_absolute: 2, posx_offset: 0, posy_offset: 0 });
+  const validEnemyOverrides = (overrides) => overrides && Object.entries(overrides).every(([key, value]) => enemyFieldNames.includes(key) && Number.isInteger(value)
+    && (key === "pos_absolute" ? value >= 0 && value <= 2 : key === "hp_gauge_type" ? value >= 0 && value <= 4 : value >= -2000 && value <= 2000));
+  const validVisualOverrides = (overrides, keys) => overrides && Object.entries(overrides).every(([key, value]) => keys.includes(key) && Number.isInteger(value));
+  const nativeDefaultSlots = () => available.slice(0, 5).map((unit) => ({ unitId: Number(unit.id), overrides: {} }));
+  const defaultEnemy = enemyChoices[0];
+  const validDraft = (value) => value?.format === "dg-wiki-native-battle-draft" && value.dataVersion === scene.catalog.dataVersion
+    && value.sourceApkSha256 === scene.catalog.sourceApkSha256 && Array.isArray(value.party) && value.party.length === 5
+    && value.party.every((slot) => availableById.has(Number(slot.unitId)) && validVisualOverrides(slot.overrides, nativeFields))
+    && availableById.has(Number(value.cutin?.unitId)) && validVisualOverrides(value.cutin?.overrides, ["img_cutin_tiling", "img_cutin_offsetX", "img_cutin_offsetY"])
+    && enemyById.has(Number(value.enemy?.unitId)) && validVisualOverrides(value.enemy?.fieldOverrides, ["size_width", "size_height", "pivot", "side_offset"])
+    && validEnemyOverrides(value.enemy?.overrides);
+  let party = nativeDefaultSlots();
+  let cutin = { unitId: Number(party[0]?.unitId), overrides: {} };
+  let enemy = { unitId: Number(defaultEnemy?.id), overrides: emptyEnemyOverrides(), fieldOverrides: {} };
+  try {
+    const saved = JSON.parse(localStorage.getItem(battleStorageKey));
+    if (validDraft(saved)) { party = saved.party; cutin = saved.cutin; enemy = saved.enemy; }
+  } catch { /* Start from native defaults when no local draft is available. */ }
+  let editMode = "party";
+  let activeSlot = 0;
+  let resultsPage = 1;
+  const resultsPageSize = 32;
+  let query = "";
+  let drag = null;
+  let saveTimer;
+  window.DG_LOCAL_DATA = scene;
+  window.DG_BATTLE_IMAGE_IDS = Object.fromEntries(nativeUnits.map((unit) => [unit.id, unit.drawId]));
+  shell("戰鬥配置工具", "照原生戰鬥場景編排隊伍、NS 橫幅與敵方立繪，並沿用原 APK 調整檔格式匯出。", `<div class="battle-tool" id="battle-tool">
+    <div class="battle-toolbar"><span id="battle-save-status" role="status">調整只儲存在此瀏覽器</span><div><button class="button secondary" id="battle-import">匯入原生調整檔</button><button id="battle-export">匯出 APK 調整檔</button><input id="battle-file" type="file" accept=".json,application/json" hidden></div></div>
+    <div class="battle-layout-grid"><section class="battle-preview-panel"><div class="battle-preview-head"><div><strong>原生戰鬥畫面預覽</strong><small>點選目標格，直接拖曳對應立繪調整位置</small></div><span>640 × 1136</span></div><div class="battle-canvas-wrap battle-native-stage"><canvas id="battle-canvas" width="640" height="1136" aria-label="可拖曳的原生戰鬥預覽"></canvas><canvas id="battle-overlay" width="640" height="1136" aria-hidden="true"></canvas></div><p class="battle-preview-note">戰鬥背景、敵區框、Normal Skill 橫幅、五格遮罩與圖集沿用原版；角色立繪取自 wiki 圖片。</p></section>
+    <aside class="battle-controls"><section class="battle-control-card"><h2>選擇編輯區域</h2><label>目標<select id="battle-mode"><option value="enemy">敵人立繪</option><option value="cutin">NS 橫幅角色</option>${slotLabels.map((label, index) => `<option value="party-${index}">${index + 1}. ${esc(label)}</option>`).join("")}</select></label><label>搜尋角色<input id="battle-search" type="search" autocomplete="off" placeholder="輸入角色名稱或編號"></label><div class="battle-results" id="battle-results"></div><div class="battle-pagination" id="battle-pagination"></div></section>
+    <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p></section>
+    <section class="battle-control-card"><h2>APK 匯出格式</h2><p>匯出沿用 DG Battle Lab 的 <code>dg-battle-presentation</code> schema 1、資料版本與 APK 指紋，包含隊伍槽、NS 立繪及敵人位置覆寫。</p><p class="muted">隊伍格對應 img_4（隊長／右側）至 img_0（好友／左側）；NS 與敵人各自輸出原生顯示欄位。</p></section></aside></div></div>`);
+  const canvas = document.querySelector("#battle-canvas");
+  const overlay = document.querySelector("#battle-overlay");
+  const status = document.querySelector("#battle-save-status");
+  const renderer = new window.DGBattleRenderer.Renderer(canvas, overlay, scene.layout, (error) => { status.textContent = `素材載入失敗：${error.message}`; });
+  const resizeStage = () => renderer.resize(canvas.clientWidth, canvas.clientHeight);
+  new ResizeObserver(resizeStage).observe(canvas);
+  resizeStage();
+  const modeSelect = document.querySelector("#battle-mode");
+  const currentId = () => editMode === "party" ? Number(party[activeSlot].unitId) : editMode === "cutin" ? Number(cutin.unitId) : Number(enemy.unitId);
+  const fieldsForRole = (role, overrides = {}) => ({ ...availableById.get(Number(role.unitId)).fields, ...overrides });
+  const fieldsForSlot = (slot) => fieldsForRole(slot, slot.overrides);
+  const fieldsForCutin = () => fieldsForRole(cutin, cutin.overrides);
+  const fieldsForEnemy = () => fieldsForRole(enemy, enemy.fieldOverrides);
+  const enemyRecord = () => enemyById.get(Number(enemy.unitId)).enemies[0];
+  const enemyPlacement = () => ({ ...enemyRecord(), ...enemy.overrides, pos_absolute: 2 });
+  const updateVisual = (target, key, value) => {
+    const number = Math.round(value), fixed = key.includes("tiling") ? Math.max(1, Math.min(4000, number)) : Math.max(-4000, Math.min(4000, number));
+    target.overrides[key] = fixed;
+  };
+  const storeDraft = () => {
+    clearTimeout(saveTimer); status.textContent = "儲存中…";
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(battleStorageKey, JSON.stringify({ format: "dg-wiki-native-battle-draft", dataVersion: scene.catalog.dataVersion, sourceApkSha256: scene.catalog.sourceApkSha256, party, cutin, enemy })); if (status.isConnected) status.textContent = "已儲存在此瀏覽器"; }
+      catch { if (status.isConnected) status.textContent = "無法儲存，請匯出 JSON"; }
+    }, 120);
+  };
+  const renderTarget = () => {
+    modeSelect.value = editMode === "party" ? `party-${activeSlot}` : editMode;
+    const role = availableById.get(currentId()), wiki = wikiByDrawId.get(Number(role.drawId));
+    const labels = { party: slotLabels[activeSlot], cutin: "NS 橫幅角色", enemy: "敵人立繪" };
+    document.querySelector("#battle-target-name").textContent = labels[editMode];
+    document.querySelector("#battle-current-unit").textContent = `${wiki?.name || role.name} · No.${id3(role.drawId)}`;
+    const title = document.querySelector("#battle-size-title");
+    const input = document.querySelector("#battle-size");
+    if (editMode === "enemy") {
+      const fields = fieldsForEnemy(); input.min = "16"; input.max = "1280"; input.step = "8"; input.value = fields.size_width;
+      document.querySelector("#battle-size-label").textContent = `${fields.size_width} × ${fields.size_height}`; title.textContent = "敵人顯示尺寸";
+      document.querySelector("#battle-edit-hint").textContent = "拖曳敵人網格調整原生座標；滾輪或滑桿調整敵人尺寸。";
+    } else {
+      const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
+      const fields = editMode === "party" ? fieldsForSlot(party[activeSlot]) : fieldsForCutin();
+      const tiling = fields[prefix + "tiling"]; input.min = "40"; input.max = "1200"; input.step = "5"; input.value = Math.max(40, Math.min(1200, tiling));
+      document.querySelector("#battle-size-label").textContent = `${Math.round(tiling / 10)}%`;
+      title.textContent = editMode === "party" ? "格內取景縮放" : "NS 橫幅取景縮放";
+      document.querySelector("#battle-edit-hint").textContent = editMode === "party" ? "隊伍外框固定；拖曳只調整遮罩框內的立繪取景。" : "拖曳 NS 橫幅中的立繪調整取景；橫幅位置與 60:9 比例固定。";
+    }
+  };
+  const renderResults = () => {
+    const q = document.querySelector("#battle-search").value.trim().toLowerCase();
+    const pool = editMode === "enemy" ? enemyChoices : available;
+    const filtered = pool.filter((native) => {
+      const wiki = wikiByDrawId.get(Number(native.drawId));
+      return !q || `${wiki?.name || native.name} ${native.name} ${id3(native.drawId)} ${native.drawId}`.toLowerCase().includes(q);
+    });
+    const pageCount = Math.max(1, Math.ceil(filtered.length / resultsPageSize));
+    resultsPage = Math.min(resultsPage, pageCount);
+    const results = filtered.slice((resultsPage - 1) * resultsPageSize, resultsPage * resultsPageSize);
+    document.querySelector("#battle-results").innerHTML = results.map((native) => {
+      const wiki = wikiByDrawId.get(Number(native.drawId));
+      return `<button class="battle-result" type="button" data-unit-id="${esc(native.id)}"><img src="/img/icon/${id3(native.drawId)}-icon.png" alt="" loading="lazy" onerror="this.hidden=true"><span><strong>${esc(wiki?.name || native.name)}</strong><small>No.${esc(id3(native.drawId))}${editMode === "enemy" ? " · 有敵人資料" : ""}</small></span></button>`;
+    }).join("") || `<p class="muted">找不到符合的角色。</p>`;
+    const start = filtered.length ? (resultsPage - 1) * resultsPageSize + 1 : 0;
+    const end = Math.min(resultsPage * resultsPageSize, filtered.length);
+    document.querySelector("#battle-pagination").innerHTML = `<button type="button" class="button secondary" data-page="${resultsPage - 1}" ${resultsPage <= 1 ? "disabled" : ""}>上一頁</button><span>第 ${resultsPage} / ${pageCount} 頁 · ${start}–${end} / ${filtered.length} 名</span><button type="button" class="button secondary" data-page="${resultsPage + 1}" ${resultsPage >= pageCount ? "disabled" : ""}>下一頁</button>`;
+  };
+  const draw = () => {
+    const partyUnits = party.map((slot) => availableById.get(Number(slot.unitId)));
+    const partyFields = party.map(fieldsForSlot);
+    const enemyUnit = enemyById.get(Number(enemy.unitId));
+    renderer.scene({ unit: enemyUnit, fields: fieldsForEnemy(), enemyUnit, enemyFields: fieldsForEnemy(), cutinUnit: availableById.get(Number(cutin.unitId)), cutinFields: fieldsForCutin(), partyUnits, partyFields, mode: editMode, slot: activeSlot, showCutin: true, showEnemy: true, enemyCount: 1, enemy: enemyPlacement() });
+    renderer.render();
+  };
+  const refresh = (save = true) => { renderTarget(); draw(); if (save) storeDraft(); };
+  modeSelect.addEventListener("change", () => {
+    const selected = modeSelect.value;
+    if (selected.startsWith("party-")) { editMode = "party"; activeSlot = Number(selected.slice(6)); }
+    else editMode = selected;
+    resultsPage = 1;
+    renderResults(); refresh(false);
+  });
+  document.querySelector("#battle-search").addEventListener("input", () => { resultsPage = 1; renderResults(); });
+  document.querySelector("#battle-pagination").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-page]");
+    if (!button || button.disabled) return;
+    resultsPage = Number(button.dataset.page);
+    renderResults();
+  });
+  document.querySelector("#battle-results").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-unit-id]"); if (!button) return;
+    const id = Number(button.dataset.unitId);
+    if (editMode === "party") party[activeSlot] = { unitId: id, overrides: {} };
+    else if (editMode === "cutin") cutin = { unitId: id, overrides: {} };
+    else enemy = { unitId: id, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
+    refresh();
+  });
+  document.querySelector("#battle-size").addEventListener("input", (event) => {
+    const value = Number(event.target.value);
+    if (editMode === "enemy") {
+      const fields = fieldsForEnemy(), ratio = fields.size_height / Math.max(1, fields.size_width);
+      enemy.fieldOverrides.size_width = Math.max(16, Math.min(1280, Math.round(value)));
+      enemy.fieldOverrides.size_height = Math.max(16, Math.min(1280, Math.round(value * ratio)));
+    } else {
+      const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
+      updateVisual(editMode === "party" ? party[activeSlot] : cutin, prefix + "tiling", value);
+    }
+    refresh();
+  });
+  canvas.addEventListener("pointerdown", (event) => {
+    const point = renderer.point(event), hit = renderer.hit(point);
+    if (!hit || !["party", "cutin", "enemy"].includes(hit.kind)) return;
+    editMode = hit.kind;
+    if (hit.kind === "party") activeSlot = hit.slot;
+    modeSelect.value = hit.kind === "party" ? `party-${activeSlot}` : editMode;
+    resultsPage = 1;
+    renderResults(); renderTarget();
+    drag = { point, hit, fields: hit.kind === "party" ? fieldsForSlot(party[hit.slot]) : hit.kind === "cutin" ? fieldsForCutin() : null, enemy: hit.kind === "enemy" ? enemyPlacement() : null };
+    canvas.setPointerCapture(event.pointerId); draw();
+  });
+  canvas.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    const point = renderer.point(event), dx = point[0] - drag.point[0], dy = point[1] - drag.point[1];
+    if (drag.hit.kind === "enemy") {
+      enemy.overrides.pos_absolute = 2;
+      enemy.overrides.posx_offset = Math.max(-2000, Math.min(2000, Math.round((drag.enemy.pos_absolute === 2 ? drag.enemy.posx_offset : 0) + dx)));
+      enemy.overrides.posy_offset = Math.max(-2000, Math.min(2000, Math.round((drag.enemy.pos_absolute === 2 ? drag.enemy.posy_offset : 0) - dy)));
+    } else {
+      const prefix = drag.hit.kind === "party" ? `img_${4 - drag.hit.slot}_` : "img_cutin_";
+      const scale = drag.fields[prefix + "tiling"] / 1000, sy = drag.hit.kind === "cutin" ? 0.15 : 1, j = drag.hit.jacobian;
+      const target = drag.hit.kind === "party" ? party[drag.hit.slot] : cutin;
+      updateVisual(target, prefix + "offsetX", drag.fields[prefix + "offsetX"] - 1000 * scale * (j[0][0] * dx + j[0][1] * dy));
+      updateVisual(target, prefix + "offsetY", drag.fields[prefix + "offsetY"] - 1000 * scale * sy * (j[1][0] * dx + j[1][1] * dy));
+    }
+    renderTarget(); draw(); storeDraft();
+  });
+  const endDrag = () => { drag = null; };
+  canvas.addEventListener("pointerup", endDrag); canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("wheel", (event) => {
+    event.preventDefault(); const direction = event.deltaY < 0 ? 1 : -1;
+    if (editMode === "enemy") {
+      const fields = fieldsForEnemy(), width = Math.max(16, Math.min(1280, fields.size_width + direction * 8)), ratio = fields.size_height / Math.max(1, fields.size_width);
+      enemy.fieldOverrides.size_width = width; enemy.fieldOverrides.size_height = Math.max(16, Math.min(1280, Math.round(width * ratio)));
+    } else {
+      const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_", target = editMode === "party" ? party[activeSlot] : cutin;
+      const fields = editMode === "party" ? fieldsForSlot(target) : fieldsForCutin(); updateVisual(target, prefix + "tiling", Math.max(40, Math.min(1200, fields[prefix + "tiling"] + direction * 10)));
+    }
+    refresh();
+  }, { passive: false });
+  document.querySelector("#battle-reset-slot").addEventListener("click", () => {
+    if (editMode === "party") party[activeSlot].overrides = {};
+    else if (editMode === "cutin") cutin.overrides = {};
+    else enemy = { ...enemy, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
+    refresh();
+  });
+  document.querySelector("#battle-export").addEventListener("click", () => {
+    const profiles = new Map();
+    const ensureProfile = (id) => {
+      if (!profiles.has(id)) profiles.set(id, { fields: { ...availableById.get(Number(id)).fields }, enemy_overrides: {} });
+      return profiles.get(id);
+    };
+    party.forEach((slot, index) => Object.assign(ensureProfile(Number(slot.unitId)).fields, slot.overrides));
+    Object.assign(ensureProfile(Number(cutin.unitId)).fields, cutin.overrides);
+    const selectedEnemy = enemyById.get(Number(enemy.unitId)), enemyEntry = selectedEnemy.enemies[0];
+    Object.assign(ensureProfile(Number(enemy.unitId)).fields, enemy.fieldOverrides);
+    ensureProfile(Number(enemy.unitId)).enemy_overrides[enemyEntry.fix_id] = enemy.overrides;
+    const characters = [...profiles].map(([id, profile]) => ({ id, fields: profile.fields, enemy_overrides: profile.enemy_overrides, completed: false, note: "", party_slot_rects: Array.from({ length: 5 }, (_, slot) => { const n = 4 - slot, f = profile.fields; return [f[`img_${n}_offsetX`] / 1000, f[`img_${n}_offsetY`] / 1000, f[`img_${n}_tiling`] / 1000, f[`img_${n}_tiling`] / 1000]; }) }));
+    const output = { format: battleFormat, schema: 1, visual_revision: 2, data_version: scene.catalog.dataVersion, source_apk_sha256: scene.catalog.sourceApkSha256, created_at: new Date().toISOString(), description: "Native visual fields only. img_4=leader/right, img_0=friend/left. Party slot0..4 uses img4..0. NS cutin and enemy placement use native visual fields.", characters, wiki_party_slots: party.map((slot, index) => ({ slot: index, id: Number(slot.unitId), draw_id: Number(availableById.get(Number(slot.unitId)).drawId) })), wiki_nspecial: { id: Number(cutin.unitId), draw_id: Number(availableById.get(Number(cutin.unitId)).drawId) }, wiki_enemy: { id: Number(enemy.unitId), draw_id: Number(selectedEnemy.drawId), fix_id: Number(enemyEntry.fix_id) } };
+    const blob = new Blob([JSON.stringify(output, null, 2)], { type: "application/json" });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `dg291-presentation-${new Date().toLocaleDateString("sv-SE")}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+  });
+  document.querySelector("#battle-import").addEventListener("click", () => document.querySelector("#battle-file").click());
+  document.querySelector("#battle-file").addEventListener("change", async (event) => {
+    const file = event.target.files[0]; if (!file) return;
+    try {
+      if (file.size > 8 * 1024 * 1024) throw Error("JSON 檔案超過 8 MiB。");
+      const value = JSON.parse(await file.text());
+      if (value?.format !== battleFormat || value.schema !== 1 || value.data_version !== scene.catalog.dataVersion || value.source_apk_sha256 !== scene.catalog.sourceApkSha256 || !Array.isArray(value.characters)) throw Error("調整檔版本或來源 APK 不符合。");
+      const imported = new Map();
+      for (const character of value.characters) {
+        const id = Number(character.id), fields = character.fields, overrides = character.enemy_overrides || {};
+        if (!availableById.has(id) || imported.has(id) || !fields || nativeFields.some((key) => !Number.isInteger(fields[key]))) throw Error("角色或原生欄位資料不合法。");
+        const owner = availableById.get(id), validEnemyIds = new Set(owner.enemies.map((entry) => String(entry.fix_id)));
+        if (Object.entries(overrides).some(([fixId, values]) => !validEnemyIds.has(String(fixId)) || !validEnemyOverrides(values))) throw Error("敵人覆寫資料不合法。");
+        imported.set(id, { fields, enemyOverrides: overrides });
+      }
+      const importedSlots = Array.isArray(value.wiki_party_slots) ? value.wiki_party_slots : [];
+      party = party.map((slot, index) => {
+        const row = importedSlots.find((entry) => Number(entry.slot) === index);
+        const unitId = row && availableById.has(Number(row.id)) ? Number(row.id) : Number(slot.unitId);
+        const fields = imported.get(unitId)?.fields, prefix = `img_${4 - index}_`;
+        return { unitId, overrides: fields ? Object.fromEntries(["tiling", "offsetX", "offsetY"].map((name) => [`${prefix}${name}`, fields[`${prefix}${name}`]])) : {} };
+      });
+      const nsId = Number(value.wiki_nspecial?.id ?? cutin.unitId);
+      if (!availableById.has(nsId)) throw Error("NS 角色編號不存在。");
+      const nsFields = imported.get(nsId)?.fields;
+      cutin = { unitId: nsId, overrides: nsFields ? Object.fromEntries(["tiling", "offsetX", "offsetY"].map((name) => [`img_cutin_${name}`, nsFields[`img_cutin_${name}`]])) : {} };
+      const enemyId = Number(value.wiki_enemy?.id ?? enemy.unitId), nextEnemyProfile = enemyById.get(enemyId);
+      if (!nextEnemyProfile) throw Error("敵人角色沒有對應的原生敵方資料。");
+      const enemyFixId = String(value.wiki_enemy?.fix_id ?? nextEnemyProfile.enemies[0].fix_id);
+      const enemyValues = imported.get(enemyId)?.enemyOverrides[enemyFixId] || emptyEnemyOverrides(), enemyFields = imported.get(enemyId)?.fields;
+      enemy = { unitId: enemyId, overrides: enemyValues, fieldOverrides: enemyFields ? Object.fromEntries(["size_width", "size_height", "pivot", "side_offset"].map((key) => [key, enemyFields[key]])) : {} };
+      refresh(); status.textContent = "已匯入原生調整檔";
+    } catch (error) { status.textContent = `匯入失敗：${error.message}`; }
+    finally { event.target.value = ""; }
+  });
+  renderResults(); refresh(false);
+  const frame = () => { if (!canvas.isConnected) return; renderer.render(); requestAnimationFrame(frame); };
+  frame();
+}
 function renderUnitList() {
   shell("角色列表", `資料快照收錄 ${db.units.length.toLocaleString()} 名角色。輸入名稱或編號篩選。`, `<div class="toolbar"><input id="unit-filter" placeholder="搜尋角色名稱 / 編號"><select id="element-filter"><option value="">全部屬性</option>${Object.entries(elementNames).filter(([key]) => key !== "0").map(([key, name]) => `<option value="${key}">${name}</option>`).join("")}</select><select id="race-filter"><option value="">全部種族</option>${Object.entries(raceNames).filter(([key]) => key !== "0").map(([key, name]) => `<option value="${key}">${name}</option>`).join("")}</select></div><div class="result-count" id="unit-count"></div><div id="unit-results"></div>`);
   const input = document.querySelector("#unit-filter");
@@ -337,6 +593,15 @@ async function route() {
     render();
   };
   if (!parts.length) return open("/data/home.json", renderHome);
+  if (parts[0] === "battle") {
+    try {
+      const [units, scene] = await Promise.all([loadJson("/data/unit-index.json"), loadJson("/data/battle-scene.json")]);
+      if (generation !== routeGeneration) return;
+      db = { units, scene };
+      renderBattleTool();
+    } catch (error) { if (generation === routeGeneration) throw error; }
+    return;
+  }
   if (parts[0] === "unitlist") return open("/data/unit-index.json", renderUnitList, (units) => ({ units }));
   if (parts[0] === "unit") return open(`/data/unit/${encodeURIComponent(String(Number(parts[1])))}.json`, renderUnit);
   if (parts[0] === "questlist") return open("/data/quest-index.json", renderQuestList);

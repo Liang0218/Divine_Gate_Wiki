@@ -333,4 +333,7 @@ for (const area of areas) {
 for (const name of ["index.html", "app.js", "styles.css", "_redirects"]) {
   await cp(path.join(root, "dgdb-pages-src", name), path.join(output, name));
 }
+await cp(path.join(root, "dgdb-pages-src", "battle-renderer.js"), path.join(output, "battle-renderer.js"));
+await cp(path.join(root, "dgdb-pages-src", "data", "battle-scene.json"), path.join(output, "data", "battle-scene.json"));
+await cp(path.join(root, "dgdb-pages-src", "battle-atlas"), path.join(output, "battle-atlas"), { recursive: true });
 console.log(`Built dgdb static archive: ${units.length} units, ${areas.length} areas, ${quests.length} quests, ${copiedIcons} local icons, ${copiedLargeImages} character artworks, ${copiedAreaAssets} area assets, ${voteResults.length} vote rounds.`);
