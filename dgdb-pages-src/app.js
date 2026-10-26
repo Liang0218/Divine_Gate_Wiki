@@ -60,7 +60,7 @@ function shell(title, lede, content) {
 
 function renderHome() {
   document.title = "Divine Gate 資料庫";
-  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.1.1</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a><a class="link-card" href="/battle"><strong>戰鬥配置工具 →</strong><span>在原生五格角色框內調整立繪取景，匯出 APK 調整檔</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
+  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.1.2</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a><a class="link-card" href="/battle"><strong>戰鬥配置工具 →</strong><span>在原生五格角色框內調整立繪取景，匯出 APK 調整檔</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
   document.querySelector("#home-search").addEventListener("submit", (event) => {
     event.preventDefault();
     const query = document.querySelector("#home-query").value.trim();
@@ -157,7 +157,7 @@ function renderBattleTool() {
     <div class="battle-toolbar"><span id="battle-save-status" role="status">調整只儲存在此瀏覽器</span><div><button class="button secondary" id="battle-import">匯入原生調整檔</button><button id="battle-export">匯出 APK 調整檔</button><input id="battle-file" type="file" accept=".json,application/json" hidden></div></div>
     <div class="battle-layout-grid"><section class="battle-preview-panel"><div class="battle-preview-head"><div><strong>原生戰鬥畫面預覽</strong><small>點選目標格，直接拖曳對應立繪調整位置</small></div><span>640 × 1136</span></div><div class="battle-canvas-wrap battle-native-stage"><canvas id="battle-canvas" width="640" height="1136" aria-label="可拖曳的原生戰鬥預覽"></canvas><canvas id="battle-overlay" width="640" height="1136" aria-hidden="true"></canvas></div><p class="battle-preview-note">戰鬥背景、敵區框、Normal Skill 橫幅、五格遮罩與圖集沿用原版；角色立繪取自 wiki 圖片。</p></section>
     <aside class="battle-controls"><section class="battle-control-card"><h2>選擇編輯區域</h2><label>目標<select id="battle-mode"><option value="enemy">敵人立繪</option><option value="cutin">NS 橫幅角色</option>${slotLabels.map((label, index) => `<option value="party-${index}">${index + 1}. ${esc(label)}</option>`).join("")}</select></label><label>搜尋角色<input id="battle-search" type="search" autocomplete="off" placeholder="輸入角色名稱或編號"></label><div class="battle-results" id="battle-results"></div><div class="battle-pagination" id="battle-pagination"></div></section>
-    <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p></section>
+    <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p><div class="battle-coordinate-tools"><div class="battle-coordinate-current"><strong>目前座標</strong><code id="battle-coordinate-value">X: 0, Y: 0</code><button class="button secondary" id="battle-coordinate-copy" type="button">複製 X/Y</button></div><label for="battle-coordinate-input">貼上 X/Y<input id="battle-coordinate-input" type="text" placeholder="例如 120, -35" autocomplete="off"></label><button id="battle-coordinate-paste" type="button">套用座標</button><span id="battle-coordinate-status" role="status"></span></div></section>
     <section class="battle-control-card"><h2>APK 匯出格式</h2><p>匯出沿用 DG Battle Lab 的 <code>dg-battle-presentation</code> schema 1、資料版本與 APK 指紋，包含隊伍槽、NS 立繪及敵人位置覆寫。</p><p class="muted">隊伍格對應 img_4（隊長／右側）至 img_0（好友／左側）；NS 與敵人各自輸出原生顯示欄位。</p></section></aside></div></div>`);
   const canvas = document.querySelector("#battle-canvas");
   const overlay = document.querySelector("#battle-overlay");
@@ -169,6 +169,16 @@ function renderBattleTool() {
   const modeSelect = document.querySelector("#battle-mode");
   document.querySelector("#battle-search").value = query;
   const currentId = () => editMode === "party" ? Number(party[activeSlot].unitId) : editMode === "cutin" ? Number(cutin.unitId) : Number(enemy.unitId);
+  const coordinatesForTarget = () => {
+    if (editMode === "enemy") { const placement = enemyPlacement(); return [placement.posx_offset, placement.posy_offset]; }
+    const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
+    const fields = editMode === "party" ? fieldsForSlot(party[activeSlot]) : fieldsForCutin();
+    return [fields[prefix + "offsetX"], fields[prefix + "offsetY"]];
+  };
+  const showCoordinates = () => {
+    const [x, y] = coordinatesForTarget();
+    document.querySelector("#battle-coordinate-value").textContent = `X: ${x}, Y: ${y}`;
+  };
   const fieldsForRole = (role, overrides = {}) => ({ ...availableById.get(Number(role.unitId)).fields, ...overrides });
   const fieldsForSlot = (slot) => fieldsForRole(slot, slot.overrides);
   const fieldsForCutin = () => fieldsForRole(cutin, cutin.overrides);
@@ -190,6 +200,7 @@ function renderBattleTool() {
     }, 120);
   };
   const renderTarget = () => {
+    showCoordinates();
     modeSelect.value = editMode === "party" ? `party-${activeSlot}` : editMode;
     const role = availableById.get(currentId()), wiki = wikiByDrawId.get(Number(role.drawId));
     const labels = { party: slotLabels[activeSlot], cutin: "NS 橫幅角色", enemy: "敵人立繪" };
@@ -328,6 +339,29 @@ function renderBattleTool() {
     else if (editMode === "cutin") cutin.overrides = {};
     else enemy = { ...enemy, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
     refresh();
+  });
+  document.querySelector("#battle-coordinate-copy").addEventListener("click", async () => {
+    const [x, y] = coordinatesForTarget(), value = `${x}, ${y}`, input = document.querySelector("#battle-coordinate-input"), message = document.querySelector("#battle-coordinate-status");
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+      else { input.value = value; input.focus(); input.select(); if (!document.execCommand("copy")) throw Error("copy failed"); }
+      message.textContent = "已複製，可切換角色後貼上";
+    } catch { input.value = value; input.focus(); input.select(); message.textContent = "已選取座標，請按 Ctrl+C 複製"; }
+  });
+  document.querySelector("#battle-coordinate-paste").addEventListener("click", () => {
+    const input = document.querySelector("#battle-coordinate-input"), message = document.querySelector("#battle-coordinate-status");
+    const values = input.value.match(/[-+]?\d+(?:\.\d+)?/g)?.map(Number) || [];
+    if (values.length !== 2 || values.some((value) => !Number.isFinite(value))) { message.textContent = "請輸入兩個座標，例如 120, -35"; return; }
+    const [x, y] = values.map(Math.round);
+    if (editMode === "enemy") {
+      if (Math.abs(x) > 2000 || Math.abs(y) > 2000) { message.textContent = "敵人座標範圍為 -2000 至 2000"; return; }
+      enemy.overrides.pos_absolute = 2; enemy.overrides.posx_offset = x; enemy.overrides.posy_offset = y;
+    } else {
+      if (Math.abs(x) > 4000 || Math.abs(y) > 4000) { message.textContent = "角色座標範圍為 -4000 至 4000"; return; }
+      const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_", target = editMode === "party" ? party[activeSlot] : cutin;
+      updateVisual(target, prefix + "offsetX", x); updateVisual(target, prefix + "offsetY", y);
+    }
+    input.value = ""; message.textContent = "已套用座標"; refresh();
   });
   document.querySelector("#battle-export").addEventListener("click", () => {
     const profiles = new Map();
