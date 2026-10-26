@@ -60,7 +60,7 @@ function shell(title, lede, content) {
 
 function renderHome() {
   document.title = "Divine Gate 資料庫";
-  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.1.2</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a><a class="link-card" href="/battle"><strong>戰鬥配置工具 →</strong><span>在原生五格角色框內調整立繪取景，匯出 APK 調整檔</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
+  root.innerHTML = `<section class="hero"><div class="eyebrow"><span class="site-version-badge">v1.1.3</span> Historical archive ? 2017.09.21</div><h1>Divine Gate<br>資料庫典藏</h1><p>以原 dgdb 資料庫快照重建的唯讀典藏站。瀏覽角色能力、技能資料、關卡與故事紀錄。</p><form class="searchbar" id="home-search"><input id="home-query" autocomplete="off" placeholder="搜尋角色名稱或編號，例如 001"><button>搜尋角色</button></form></section><div class="stat-grid"><div class="stat-card"><strong>${db.unitCount.toLocaleString()}</strong>角色資料</div><div class="stat-card"><strong>${db.areaCount.toLocaleString()}</strong>區域</div><div class="stat-card"><strong>${db.questCount.toLocaleString()}</strong>關卡</div></div><div class="link-grid"><a class="link-card" href="/unitlist"><strong>角色列表 →</strong><span>依名稱、編號、屬性搜尋角色</span></a><a class="link-card" href="/questlist"><strong>關卡資料 →</strong><span>依區域瀏覽關卡和樓層資訊</span></a><a class="link-card" href="/skill/n"><strong>技能一覽 →</strong><span>檢視普通、主動、隊長及 Link 技能</span></a><a class="link-card" href="/rank"><strong>玩家等級 →</strong><span>查看等級經驗、體力和隊伍成本</span></a><a class="link-card" href="/story"><strong>故事文本 →</strong><span>瀏覽快照內收錄的翻譯文本</span></a><a class="link-card" href="/battle"><strong>戰鬥配置工具 →</strong><span>在原生五格角色框內調整立繪取景，匯出 APK 調整檔</span></a></div><p class="snapshot-note">此站內容來自 2017-09-21 的資料快照。原站需要即時資料庫的功能已改為本地靜態瀏覽。</p>`;
   document.querySelector("#home-search").addEventListener("submit", (event) => {
     event.preventDefault();
     const query = document.querySelector("#home-query").value.trim();
@@ -157,7 +157,7 @@ function renderBattleTool() {
     <div class="battle-toolbar"><span id="battle-save-status" role="status">調整只儲存在此瀏覽器</span><div><button class="button secondary" id="battle-import">匯入原生調整檔</button><button id="battle-export">匯出 APK 調整檔</button><input id="battle-file" type="file" accept=".json,application/json" hidden></div></div>
     <div class="battle-layout-grid"><section class="battle-preview-panel"><div class="battle-preview-head"><div><strong>原生戰鬥畫面預覽</strong><small>點選目標格，直接拖曳對應立繪調整位置</small></div><span>640 × 1136</span></div><div class="battle-canvas-wrap battle-native-stage"><canvas id="battle-canvas" width="640" height="1136" aria-label="可拖曳的原生戰鬥預覽"></canvas><canvas id="battle-overlay" width="640" height="1136" aria-hidden="true"></canvas></div><p class="battle-preview-note">戰鬥背景、敵區框、Normal Skill 橫幅、五格遮罩與圖集沿用原版；角色立繪取自 wiki 圖片。</p></section>
     <aside class="battle-controls"><section class="battle-control-card"><h2>選擇編輯區域</h2><label>目標<select id="battle-mode"><option value="enemy">敵人立繪</option><option value="cutin">NS 橫幅角色</option>${slotLabels.map((label, index) => `<option value="party-${index}">${index + 1}. ${esc(label)}</option>`).join("")}</select></label><label>搜尋角色<input id="battle-search" type="search" autocomplete="off" placeholder="輸入角色名稱或編號"></label><div class="battle-results" id="battle-results"></div><div class="battle-pagination" id="battle-pagination"></div></section>
-    <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p><div class="battle-coordinate-tools"><div class="battle-coordinate-current"><strong>目前座標</strong><code id="battle-coordinate-value">X: 0, Y: 0</code><button class="button secondary" id="battle-coordinate-copy" type="button">複製 X/Y</button></div><label for="battle-coordinate-input">貼上 X/Y<input id="battle-coordinate-input" type="text" placeholder="例如 120, -35" autocomplete="off"></label><button id="battle-coordinate-paste" type="button">套用座標</button><span id="battle-coordinate-status" role="status"></span></div></section>
+    <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><div class="battle-coordinate-tools" id="battle-scale-tools"><div class="battle-coordinate-current"><strong>目前縮放</strong><code id="battle-scale-value">100%</code><button class="button secondary" id="battle-scale-copy" type="button">複製縮放</button></div><label for="battle-scale-input">貼上縮放<input id="battle-scale-input" type="text" placeholder="例如 75.5%" autocomplete="off"></label><button id="battle-scale-apply" type="button">套用縮放</button><span id="battle-scale-status" role="status"></span></div><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p><div class="battle-coordinate-tools"><div class="battle-coordinate-current"><strong>目前座標</strong><code id="battle-coordinate-value">X: 0, Y: 0</code><button class="button secondary" id="battle-coordinate-copy" type="button">複製 X/Y</button></div><label for="battle-coordinate-input">貼上 X/Y<input id="battle-coordinate-input" type="text" placeholder="例如 120, -35" autocomplete="off"></label><button id="battle-coordinate-paste" type="button">套用座標</button><span id="battle-coordinate-status" role="status"></span></div></section>
     <section class="battle-control-card"><h2>APK 匯出格式</h2><p>匯出沿用 DG Battle Lab 的 <code>dg-battle-presentation</code> schema 1、資料版本與 APK 指紋，包含隊伍槽、NS 立繪及敵人位置覆寫。</p><p class="muted">隊伍格對應 img_4（隊長／右側）至 img_0（好友／左側）；NS 與敵人各自輸出原生顯示欄位。</p></section></aside></div></div>`);
   const canvas = document.querySelector("#battle-canvas");
   const overlay = document.querySelector("#battle-overlay");
@@ -189,6 +189,10 @@ function renderBattleTool() {
     const number = Math.round(value), fixed = key.includes("tiling") ? Math.max(1, Math.min(4000, number)) : Math.max(-4000, Math.min(4000, number));
     target.overrides[key] = fixed;
   };
+  const formatPercent = (value) => {
+    const percent = value / 10;
+    return Number.isInteger(percent) ? String(percent) : percent.toFixed(1);
+  };
   const storeDraft = () => {
     party.forEach((slot, index) => { partyProfiles[partyProfileKey(index, slot.unitId)] = { ...slot.overrides }; });
     cutinProfiles[cutin.unitId] = { ...cutin.overrides };
@@ -211,12 +215,15 @@ function renderBattleTool() {
     if (editMode === "enemy") {
       const fields = fieldsForEnemy(); input.min = "16"; input.max = "1280"; input.step = "8"; input.value = fields.size_width;
       document.querySelector("#battle-size-label").textContent = `${fields.size_width} × ${fields.size_height}`; title.textContent = "敵人顯示尺寸";
+      document.querySelector("#battle-scale-tools").hidden = true;
       document.querySelector("#battle-edit-hint").textContent = "拖曳敵人網格調整原生座標；滾輪或滑桿調整敵人尺寸。";
     } else {
       const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
       const fields = editMode === "party" ? fieldsForSlot(party[activeSlot]) : fieldsForCutin();
-      const tiling = fields[prefix + "tiling"]; input.min = "40"; input.max = "1200"; input.step = "5"; input.value = Math.max(40, Math.min(1200, tiling));
-      document.querySelector("#battle-size-label").textContent = `${Math.round(tiling / 10)}%`;
+      const tiling = fields[prefix + "tiling"]; input.min = "40"; input.max = "2500"; input.step = "5"; input.value = Math.max(40, Math.min(2500, tiling));
+      document.querySelector("#battle-size-label").textContent = `${formatPercent(tiling)}%`;
+      document.querySelector("#battle-scale-value").textContent = `${formatPercent(tiling)}%`;
+      document.querySelector("#battle-scale-tools").hidden = false;
       title.textContent = editMode === "party" ? "格內取景縮放" : "NS 橫幅取景縮放";
       document.querySelector("#battle-edit-hint").textContent = editMode === "party" ? "隊伍外框固定；拖曳只調整遮罩框內的立繪取景。" : "拖曳 NS 橫幅中的立繪調整取景；橫幅位置與 60:9 比例固定。";
     }
@@ -330,7 +337,7 @@ function renderBattleTool() {
       enemy.fieldOverrides.size_width = width; enemy.fieldOverrides.size_height = Math.max(16, Math.min(1280, Math.round(width * ratio)));
     } else {
       const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_", target = editMode === "party" ? party[activeSlot] : cutin;
-      const fields = editMode === "party" ? fieldsForSlot(target) : fieldsForCutin(); updateVisual(target, prefix + "tiling", Math.max(40, Math.min(1200, fields[prefix + "tiling"] + direction * 10)));
+      const fields = editMode === "party" ? fieldsForSlot(target) : fieldsForCutin(); updateVisual(target, prefix + "tiling", Math.max(40, Math.min(2500, fields[prefix + "tiling"] + direction * 5)));
     }
     refresh();
   }, { passive: false });
@@ -339,6 +346,33 @@ function renderBattleTool() {
     else if (editMode === "cutin") cutin.overrides = {};
     else enemy = { ...enemy, overrides: emptyEnemyOverrides(), fieldOverrides: {} };
     refresh();
+  });
+  document.querySelector("#battle-scale-copy").addEventListener("click", async () => {
+    const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
+    const target = editMode === "party" ? party[activeSlot] : cutin;
+    const fields = editMode === "party" ? fieldsForSlot(target) : fieldsForCutin();
+    const value = `${formatPercent(fields[prefix + "tiling"])}%`;
+    const input = document.querySelector("#battle-scale-input"), message = document.querySelector("#battle-scale-status");
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+      else { input.value = value; input.focus(); input.select(); if (!document.execCommand("copy")) throw Error("copy failed"); }
+      message.textContent = "已複製縮放，可貼到其他角色套用。";
+    } catch { input.value = value; input.focus(); input.select(); message.textContent = "已選取縮放值，請按 Ctrl+C 複製。"; }
+  });
+  document.querySelector("#battle-scale-apply").addEventListener("click", () => {
+    const input = document.querySelector("#battle-scale-input"), message = document.querySelector("#battle-scale-status");
+    const match = input.value.match(/^\s*(\d+(?:\.\d+)?|\.\d+)\s*%?\s*$/);
+    if (!match) { message.textContent = "請輸入百分比，例如 75.5%。"; return; }
+    const percent = Number(match[1]);
+    if (!Number.isFinite(percent) || percent < 4 || percent > 250) { message.textContent = "縮放範圍為 4% 至 250%。"; return; }
+    const prefix = editMode === "party" ? `img_${4 - activeSlot}_` : "img_cutin_";
+    const target = editMode === "party" ? party[activeSlot] : cutin;
+    updateVisual(target, prefix + "tiling", Math.round(percent * 10));
+    const applied = formatPercent(target.overrides[prefix + "tiling"]);
+    input.value = ""; refresh(); message.textContent = `已套用 ${applied}%。`;
+  });
+  document.querySelector("#battle-scale-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") document.querySelector("#battle-scale-apply").click();
   });
   document.querySelector("#battle-coordinate-copy").addEventListener("click", async () => {
     const [x, y] = coordinatesForTarget(), value = `${x}, ${y}`, input = document.querySelector("#battle-coordinate-input"), message = document.querySelector("#battle-coordinate-status");
