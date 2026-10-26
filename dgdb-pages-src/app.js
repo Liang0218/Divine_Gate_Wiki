@@ -154,7 +154,7 @@ function renderBattleTool() {
   window.DG_LOCAL_DATA = scene;
   window.DG_BATTLE_IMAGE_IDS = Object.fromEntries(nativeUnits.map((unit) => [unit.id, unit.drawId]));
   shell("戰鬥配置工具", "照原生戰鬥場景編排隊伍、NS 橫幅與敵方立繪，並沿用原 APK 調整檔格式匯出。", `<div class="battle-tool" id="battle-tool">
-    <div class="battle-toolbar"><span id="battle-save-status" role="status">調整只儲存在此瀏覽器</span><div><button class="button secondary" id="battle-import">匯入原生調整檔</button><button id="battle-export">匯出 APK 調整檔</button><input id="battle-file" type="file" accept=".json,application/json" hidden></div></div>
+    <div class="battle-toolbar"><span id="battle-save-status" role="status">調整只儲存在此瀏覽器</span><div><button class="button secondary" id="battle-import">匯入原生調整檔</button><button class="button secondary" id="battle-export">匯出當前調整檔</button><button id="battle-export-all">匯出全圖鑑調整檔</button><input id="battle-file" type="file" accept=".json,application/json" hidden></div></div>
     <div class="battle-layout-grid"><section class="battle-preview-panel"><div class="battle-preview-head"><div><strong>原生戰鬥畫面預覽</strong><small>點選目標格，直接拖曳對應立繪調整位置</small></div><span>640 × 1136</span></div><div class="battle-canvas-wrap battle-native-stage"><canvas id="battle-canvas" width="640" height="1136" aria-label="可拖曳的原生戰鬥預覽"></canvas><canvas id="battle-overlay" width="640" height="1136" aria-hidden="true"></canvas></div><p class="battle-preview-note">戰鬥背景、敵區框、Normal Skill 橫幅、五格遮罩與圖集沿用原版；角色立繪取自 wiki 圖片。</p></section>
     <aside class="battle-controls"><section class="battle-control-card"><h2>選擇編輯區域</h2><label>目標<select id="battle-mode"><option value="enemy">敵人立繪</option><option value="cutin">NS 橫幅角色</option>${slotLabels.map((label, index) => `<option value="party-${index}">${index + 1}. ${esc(label)}</option>`).join("")}</select></label><label>搜尋角色<input id="battle-search" type="search" autocomplete="off" placeholder="輸入角色名稱或編號"></label><div class="battle-results" id="battle-results"></div><div class="battle-pagination" id="battle-pagination"></div></section>
     <section class="battle-control-card"><h2 id="battle-target-name">${esc(slotLabels[0])}</h2><p id="battle-current-unit" class="battle-current-unit"></p><label><span id="battle-size-title">格內取景縮放</span> <span id="battle-size-label"></span><input id="battle-size" type="range" min="40" max="1200" step="5"></label><div class="battle-coordinate-tools" id="battle-scale-tools"><div class="battle-coordinate-current"><strong>目前縮放</strong><code id="battle-scale-value">100%</code><button class="button secondary" id="battle-scale-copy" type="button">複製縮放</button></div><label for="battle-scale-input">貼上縮放<input id="battle-scale-input" type="text" placeholder="例如 75.5%" autocomplete="off"></label><button id="battle-scale-apply" type="button">套用縮放</button><span id="battle-scale-status" role="status"></span></div><button class="button secondary" id="battle-reset-slot">還原目前立繪原始位置</button><p class="battle-coordinate-hint" id="battle-edit-hint">隊伍外框固定；拖曳只調整遮罩框內的立繪取景。</p><div class="battle-coordinate-tools"><div class="battle-coordinate-current"><strong>目前座標</strong><code id="battle-coordinate-value">X: 0, Y: 0</code><button class="button secondary" id="battle-coordinate-copy" type="button">複製 X/Y</button></div><label for="battle-coordinate-input">貼上 X/Y<input id="battle-coordinate-input" type="text" placeholder="例如 120, -35" autocomplete="off"></label><button id="battle-coordinate-paste" type="button">套用座標</button><span id="battle-coordinate-status" role="status"></span></div></section>
@@ -397,22 +397,40 @@ function renderBattleTool() {
     }
     input.value = ""; message.textContent = "已套用座標"; refresh();
   });
-  document.querySelector("#battle-export").addEventListener("click", () => {
+  const exportPresentation = (includeAllCharacters) => {
     const profiles = new Map();
     const ensureProfile = (id) => {
       if (!profiles.has(id)) profiles.set(id, { fields: { ...availableById.get(Number(id)).fields }, enemy_overrides: {} });
       return profiles.get(id);
     };
-    party.forEach((slot, index) => Object.assign(ensureProfile(Number(slot.unitId)).fields, slot.overrides));
-    Object.assign(ensureProfile(Number(cutin.unitId)).fields, cutin.overrides);
+    if (includeAllCharacters) {
+      available.forEach((unit) => {
+        const profile = ensureProfile(Number(unit.id));
+        for (let slot = 0; slot < 5; slot++) {
+          const prefix = `img_${4 - slot}_`;
+          Object.assign(profile.fields, Object.fromEntries(Object.entries(partyProfiles[partyProfileKey(slot, unit.id)] || {}).filter(([key]) => key.startsWith(prefix))));
+        }
+        Object.assign(profile.fields, Object.fromEntries(Object.entries(cutinProfiles[unit.id] || {}).filter(([key]) => key.startsWith("img_cutin_"))));
+        const savedEnemy = enemyProfiles[unit.id];
+        if (savedEnemy && unit.enemies?.length) {
+          Object.assign(profile.fields, savedEnemy.fieldOverrides || {});
+          profile.enemy_overrides[unit.enemies[0].fix_id] = savedEnemy.overrides || emptyEnemyOverrides();
+        }
+      });
+    } else {
+      party.forEach((slot) => Object.assign(ensureProfile(Number(slot.unitId)).fields, slot.overrides));
+      Object.assign(ensureProfile(Number(cutin.unitId)).fields, cutin.overrides);
+    }
     const selectedEnemy = enemyById.get(Number(enemy.unitId)), enemyEntry = selectedEnemy.enemies[0];
     Object.assign(ensureProfile(Number(enemy.unitId)).fields, enemy.fieldOverrides);
     ensureProfile(Number(enemy.unitId)).enemy_overrides[enemyEntry.fix_id] = enemy.overrides;
     const characters = [...profiles].map(([id, profile]) => ({ id, fields: profile.fields, enemy_overrides: profile.enemy_overrides, completed: false, note: "", party_slot_rects: Array.from({ length: 5 }, (_, slot) => { const n = 4 - slot, f = profile.fields; return [f[`img_${n}_offsetX`] / 1000, f[`img_${n}_offsetY`] / 1000, f[`img_${n}_tiling`] / 1000, f[`img_${n}_tiling`] / 1000]; }) }));
-    const output = { format: battleFormat, schema: 1, visual_revision: 2, data_version: scene.catalog.dataVersion, source_apk_sha256: scene.catalog.sourceApkSha256, created_at: new Date().toISOString(), description: "Native visual fields only. img_4=leader/right, img_0=friend/left. Party slot0..4 uses img4..0. NS cutin and enemy placement use native visual fields.", characters, wiki_party_slots: party.map((slot, index) => ({ slot: index, id: Number(slot.unitId), draw_id: Number(availableById.get(Number(slot.unitId)).drawId) })), wiki_nspecial: { id: Number(cutin.unitId), draw_id: Number(availableById.get(Number(cutin.unitId)).drawId) }, wiki_enemy: { id: Number(enemy.unitId), draw_id: Number(selectedEnemy.drawId), fix_id: Number(enemyEntry.fix_id) } };
+    const output = { format: battleFormat, schema: 1, visual_revision: 2, data_version: scene.catalog.dataVersion, source_apk_sha256: scene.catalog.sourceApkSha256, created_at: new Date().toISOString(), description: `${includeAllCharacters ? "Full native character catalog. " : ""}Native visual fields only. img_4=leader/right, img_0=friend/left. Party slot0..4 uses img4..0. NS cutin and enemy placement use native visual fields.`, characters, wiki_party_slots: party.map((slot, index) => ({ slot: index, id: Number(slot.unitId), draw_id: Number(availableById.get(Number(slot.unitId)).drawId) })), wiki_nspecial: { id: Number(cutin.unitId), draw_id: Number(availableById.get(Number(cutin.unitId)).drawId) }, wiki_enemy: { id: Number(enemy.unitId), draw_id: Number(selectedEnemy.drawId), fix_id: Number(enemyEntry.fix_id) } };
     const blob = new Blob([JSON.stringify(output, null, 2)], { type: "application/json" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `dg291-presentation-${new Date().toLocaleDateString("sv-SE")}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1500);
-  });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `dg291-presentation${includeAllCharacters ? "-full-catalog" : ""}-${new Date().toLocaleDateString("sv-SE")}.json`; link.click(); setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+  };
+  document.querySelector("#battle-export").addEventListener("click", () => exportPresentation(false));
+  document.querySelector("#battle-export-all").addEventListener("click", () => exportPresentation(true));
   document.querySelector("#battle-import").addEventListener("click", () => document.querySelector("#battle-file").click());
   document.querySelector("#battle-file").addEventListener("change", async (event) => {
     const file = event.target.files[0]; if (!file) return;
